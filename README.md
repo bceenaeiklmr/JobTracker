@@ -1,2 +1,148 @@
 # JobTracker
-CLI-based job scraper with Playwright and CSV export.
+
+A CLI-based job scraping tool for a Hungarian job portal built with Python and Playwright.
+
+## Overview
+
+JobTracker automates job search by collecting listings from multiple pages and exporting results to CSV, sorted by posting date.
+
+The main issue this tool solves is that job search results cannot be reliably sorted by posting date on the source site. This makes it difficult to find newly published listings manually.
+
+This tool automates the process by:
+
+- Collecting all job listings from a search result
+- Extracting posting dates
+- Sorting results chronologically
+- Exporting results into a CSV file
+
+It saves time during job hunting by making the newest opportunities immediately visible.
+
+## Features
+
+- Scrapes all pages of a search result
+- Extracts:
+  - Posting date
+  - Job ID
+  - Company name
+  - Job title
+  - Location
+  - Work mode (e.g., Hybrid, On-site, Remote)
+  - Job URL
+- Supports multiple search profiles
+- Exports results to timestamped CSV files
+- Automatically sorts jobs by posting date (newest first)
+- Command-line interface
+
+## Installation
+
+### Prerequisites
+
+- Python 3.10+
+- Google Chrome
+- pip
+
+### Setup
+
+1. Install Python dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+2. Install Playwright browser binaries:
+
+```bash
+playwright install
+```
+
+### Chrome Setup
+
+The scraper connects to a running Chrome instance via remote debugging.
+
+**Option 1: Manual Chrome Launch**
+
+Start Chrome with remote debugging enabled:
+
+```
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\chrome-debug"
+```
+
+**Option 2: Automatic Launch** 
+
+The script can launch Chrome automatically (see `start_chrome_debug()` in the code).
+
+## Configuration
+
+Edit `config.py` to define your search profiles. Each profile is a saved search URL from profession.hu.
+
+Example:
+```python
+PROFILES = {
+    "marketing": "https://www.profession.hu/allasok/online-marketing/...",
+    "crm": "https://www.profession.hu/allasok/budapest/...",
+    "marketing_hybrid": "https://www.profession.hu/allasok/marketing-media-pr/...",
+}
+```
+
+You can create new profiles by:
+1. Performing a job search on the site with your desired filters
+2. Copying the URL from the browser address bar
+3. Adding it to the `PROFILES` dictionary in `config.py`
+
+Also, update the `OUTPUT_PATH` variable to specify where CSV files should be saved.
+
+## Usage
+
+Run the scraper with a profile name defined in `config.py`:
+
+```bash
+python jobtracker.py <profile_name>
+```
+
+Examples:
+
+```bash
+python jobtracker.py marketing
+python jobtracker.py crm
+python jobtracker.py marketing_hybrid
+```
+
+The script will:
+1. Launch the browser and navigate to the saved search URL
+2. Scrape all pages of results
+3. Parse job posting dates (including Hungarian date formats)
+4. Sort jobs by posting date (newest first)
+5. Export results to a CSV file with a timestamp
+
+Sample output:
+```
+Total jobs found: 55
+Loading page 1...
+Loading page 2...
+Loading page 3...
+Total scraped: 55
+```
+
+## CSV Output
+
+| date       | id     | company      | title               | location | work_mode | url                 |
+|------------|--------|--------------|---------------------|----------|-----------|---------------------|
+| 2026-05-31 | 100001 | Example Corp | Marketing Analyst   | Budapest | Hybrid    | https://example.com |
+| 2026-05-29 | 100002 | Sample Ltd   | CRM Specialist      | Budapest | Hybrid    | https://example.com |
+| 2026-05-28 | 100003 | Demo Inc     | Product Analyst     | Remote   | Remote    | https://example.com |
+
+
+## Limitations
+
+- Depends on the current HTML structure of the target site
+- Changes in layout may require selector updates
+- Date parsing relies on localized text formats
+
+
+## License
+
+MIT License
+
+## Author
+
+Bence Markiel
