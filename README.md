@@ -1,36 +1,23 @@
 # JobTracker
 
-A CLI-based job scraping tool for a Hungarian job portal built with Python and Playwright.
+A CLI-based job scraping and aggregation tool for a Hungarian job portal built with Python and Playwright.
 
 ## Overview
 
-JobTracker automates job search by collecting listings from multiple pages and exporting results to CSV, sorted by posting date.
+JobTracker automates job search by collecting listings from multiple pages, extracting structured job data, and exporting it into sorted CSV files.
 
-The main issue this tool solves is that job search results cannot be reliably sorted by posting date on the source site. This makes it difficult to find newly published listings manually.
-
-This tool automates the process by:
-
-- Collecting all job listings from a search result
-- Extracting posting dates
-- Sorting results chronologically
-- Exporting results into a CSV file
-
-It saves time during job hunting by making the newest opportunities immediately visible.
+The main limitation of the target job portal is that search results cannot be reliably sorted by posting date. This makes manual browsing inefficient when looking for newly published listings.
 
 ## Features
 
 - Scrapes all pages of a search result
 - Extracts:
-  - Posting date
-  - Job ID
-  - Company name
-  - Job title
-  - Location
-  - Work mode (e.g., Hybrid, On-site, Remote)
-  - Job URL
-- Supports multiple search profiles
-- Exports results to timestamped CSV files
-- Automatically sorts jobs by posting date (newest first)
+  - Posting date, job id, url
+  - Company name, job title, location, work mode (hybrid)
+- Supports multiple configurable search profiles
+- Headless mode support (enabled by default)
+- Automatic Chrome process lifecycle handling
+- Daily merge functionality to combine multiple output files into a single dataset
 - Command-line interface
 
 ## Installation
@@ -78,9 +65,8 @@ Edit `config.py` to define your search profiles. Each profile is a saved search 
 Example:
 ```python
 PROFILES = {
-    "marketing": "https://www.profession.hu/allasok/online-marketing/...",
-    "crm": "https://www.profession.hu/allasok/budapest/...",
-    "marketing_hybrid": "https://www.profession.hu/allasok/marketing-media-pr/...",
+    "python": "https://www.profession.hu/allasok/budapest/...",
+    "crm": "https://www.profession.hu/allasok/budapest/..."
 }
 ```
 
@@ -102,9 +88,10 @@ python jobtracker.py <profile_name>
 Examples:
 
 ```bash
-python jobtracker.py marketing
+python jobtracker.py python
 python jobtracker.py crm
-python jobtracker.py marketing_hybrid
+...
+python merge.py
 ```
 
 The script will:
@@ -137,6 +124,33 @@ Total scraped: 55
 - Depends on the current HTML structure of the target site
 - Changes in layout may require selector updates
 - Date parsing relies on localized text formats
+
+## Changelog
+
+###  2026.06.08 – v0.0.2
+
+- added headless mode support (default: enabled)
+- added automatic Chrome process lifecycle handling
+- added daily merge functionality to combine multiple output files into a single file
+- implemented daily dataset union (merge of multiple scrape outputs)
+- implemented duplicate removal in merged dataset
+- base URL handling improved: page URL templates are now normalized automatically via function (no manual {} handling required)
+- fixed severe scraping slowdown caused by missing/empty job posting dates
+- fixed duplicate job entries in merged output via deduplication (ID + URL based)
+
+### 2026.05.30 – v0.0.1
+Features
+- scrapes all pages of a search result from the job portal
+- extracts structured job data including:
+- posting date
+- job ID, title, URL
+- company name
+- location
+- work mode (e.g., Hybrid)
+- supports multiple search profiles via configuration
+- exports results to timestamped CSV files
+- automatically sorts jobs by posting date (newest first)
+- provides a command-line interface for execution
 
 
 ## License
