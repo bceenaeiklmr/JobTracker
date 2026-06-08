@@ -3,13 +3,14 @@
 # License:   MIT License
 # Author:    Bence Markiel (bceenaeiklmr)
 # GitHub:    https://github.com/bceenaeiklmr/JobTracker
-# Date       30.05.2026
-# version    0.0.1
+# Date       08.06.2026
+# version    0.0.2
 
 
 # Std libraries
 import argparse
 import csv
+import time
 import math
 import subprocess
 import random
@@ -54,18 +55,65 @@ def get_profile_url(name: str):
     return PROFILES[name]
 
 
+# Function to convert a page-specific URL into a URL template
+def normalize_profile_url(url: str):
+    parts = url.split(",")
+    parts[0] = re.sub(r"/\d+$", "/{}", parts[0])
+    return ",".join(parts)
+
+
+# Function to connect to a Chrome instance with remote debugging
+def connect_browser(playwright):
+    try:
+        return playwright.chromium.connect_over_cdp("http://localhost:9222")
+    except Exception as e:
+        print(f"[WARN] Could not connect to Chrome: {e}")
+        proc = start_chrome_debug()
+
+        for i in range(10):
+            try:
+                return playwright.chromium.connect_over_cdp("http://localhost:9222")
+            except Exception:
+                time.sleep(1)
+
+        proc.terminate()
+        raise RuntimeError("Could not connect to Chrome debug instance.")
+
+
 # Function to start Chrome with remote debugging enabled
-def start_chrome_debug():
+def start_chrome_debug(debug=False, headless=False):
+    
     # Note: the path may need to be adjusted depending on the system and Chrome installation
     chrome_path = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
     user_data_dir = r"C:\chrome-debug"
-    port = "9222"
 
-    subprocess.Popen([
+    quiet = not debug
+
+    args = [
         chrome_path,
-        f"--remote-debugging-port={port}",
-        f"--user-data-dir={user_data_dir}"
-    ])
+        "--remote-debugging-port=9222",
+        f"--user-data-dir={user_data_dir}",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-extensions",
+    ]
+
+    if headless:
+        args += ["--headless=new", "--disable-gpu"]
+
+    if quiet:
+        args += [
+            "--log-level=3",
+            "--disable-background-networking",
+        ]
+
+    proc =subprocess.Popen(
+        args,
+        stdout=None if debug else subprocess.DEVNULL,
+        stderr=None if debug else subprocess.DEVNULL
+    )
+
+    return proc
 
 
 # Function to parse command-line arguments
@@ -76,7 +124,21 @@ def parse_args():
     # Add profile argument
     parser.add_argument(
         "profile",
-        help="Profile name (e.g. marketing, crm)"
+        help="Profile name (e.g. Python, etc.)"
+    )
+
+    # Debug
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable verbose Chrome logs and UI debugging"
+    )
+
+    # Non headless mode
+    parser.add_argument(
+        "--gui",
+        action="store_true",
+        help="Run with visible browser (default is headless)"
     )
 
     return parser.parse_args()
@@ -119,11 +181,11 @@ def scrape_jobs(page, base_url, total_pages):
 
     # Loop through all pages and scrape job data
     for page_num in range(1, total_pages + 1):
-        print(f"Loading page {page_num} ...")
+        print(f"Loading page {page_num}...")
 
         # Load the page and wait for loading
         page.goto(base_url.format(page_num))
-        page.wait_for_timeout(random.uniform(2.5, 4) * 1000)
+        page.wait_for_timeout(random.uniform(4, 5) * 1000)
 
         # Extract the job ads
         job_tiles = page.locator(Selectors.TILE)
@@ -167,7 +229,7 @@ def scrape_jobs(page, base_url, total_pages):
             try:
                 location = page.locator(
                     f"li[id^='detailed-job-card-{job_id}-details-location'] strong.primary-details-location"
-                ).inner_text().strip()
+                ).inner_text(timeout=800).strip()
             except:
                 location = None
 
@@ -239,35 +301,55 @@ if __name__ == "__main__":
 
     # Parse arguments
     args = parse_args()
+
+    headless = not args.gui
+    if headless:
+        print("Running in headless mode...")
+    else:
+        print("Running in non-headless mode...")
     
     # Get profile URL from config
-    base_url = get_profile_url(args.profile)
+    base_url = normalize_profile_url(get_profile_url(args.profile))
+
+    chrome_proc = None
 
     # Initialize Chrome in debug mode
-    start_chrome_debug()
+    try:
+        chrome_proc = start_chrome_debug(
+            debug=args.debug,
+            headless=headless
+        )
 
-    # Connect to existing Chrome instance with remote debugging
-    with sync_playwright() as p:
-        browser = p.chromium.connect_over_cdp("http://localhost:9222")
-        context = browser.contexts[0]
-        
-        # Load the first page to determine total jobs and pages
-        page = context.new_page()
-        page.goto(base_url.format(1))
-        page.wait_for_timeout(random.uniform(2.5, 3.5) * 1000)
+        print("Chrome initialized.")
 
-        # Extract total job count from the page
-        html = page.content()
-        match = re.search(r'(\d+)\s+álláshirdetés', html)
+        # Connect to existing Chrome instance with remote debugging
+        with sync_playwright() as p:
+            browser = connect_browser(p)
+            context = browser.contexts[0]
+            
+            # Load the first page to determine total jobs and pages
+            page = context.new_page()
+            page.goto(base_url.format(1))
+            page.wait_for_timeout(random.uniform(5, 6) * 1000)
 
-        total_jobs = int(match.group(1)) if match else 0
-        total_pages = math.ceil(total_jobs / JOBS_PER_PAGE)
+            # Extract total job count from the page
+            html = page.content()
+            match = re.search(r'(\d+)\s+álláshirdetés', html)
 
-        print("Total jobs found:", total_jobs)
+            total_jobs = int(match.group(1)) if match else 0
+            total_pages = math.ceil(total_jobs / JOBS_PER_PAGE)
 
-        jobs = scrape_jobs(page, base_url, total_pages)
+            print("Total jobs found:", total_jobs)
 
-    print("Total scraped:", len(jobs))
+            jobs = scrape_jobs(page, base_url, total_pages)
+
+        print("Total scraped:", len(jobs))
+
+    finally:
+        if chrome_proc:
+            chrome_proc.terminate()
+            chrome_proc.wait()
+            print("Chrome exited.")
 
     # Save the data
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -280,3 +362,5 @@ if __name__ == "__main__":
     save_jobs(jobs, out_path)
 
     print("Completed.")
+
+    
