@@ -127,6 +127,12 @@ Total scraped: 55
 
 ## Changelog
 
+ 
+
+Details: [CHANGELOG.md](https://github.com/bceenaeiklmr/JobTracker/edit/main/CHANGELOG.md)
+
+Latest update:
+
 ###  2026.06.08 – v0.0.2
 
 - added headless mode support (default: enabled)
@@ -137,20 +143,6 @@ Total scraped: 55
 - base URL handling improved: page URL templates are now normalized automatically via function (no manual {} handling required)
 - fixed severe scraping slowdown caused by missing/empty job posting dates
 - fixed duplicate job entries in merged output via deduplication (ID + URL based)
-
-### 2026.05.30 – v0.0.1
-Features
-- scrapes all pages of a search result from the job portal
-- extracts structured job data including:
-- posting date
-- job ID, title, URL
-- company name
-- location
-- work mode (e.g., Hybrid)
-- supports multiple search profiles via configuration
-- exports results to timestamped CSV files
-- automatically sorts jobs by posting date (newest first)
-- provides a command-line interface for execution
 
 
 ## License
