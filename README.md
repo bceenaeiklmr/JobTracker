@@ -1,24 +1,39 @@
 # JobTracker
 
-A CLI-based job scraping and aggregation tool for a Hungarian job portal built with Python and Playwright.
+A Python-based CLI tool for scraping, aggregating, and analyzing job listings from a Hungarian job portal using Playwright.
 
 ## Overview
 
-JobTracker automates job search by collecting listings from multiple pages, extracting structured job data, and exporting it into sorted CSV files.
+JobTracker automates job discovery by collecting listings across multiple search profiles and pages, extracting structured job data, and exporting it into clean, deduplicated datasets.
 
-The main limitation of the target job portal is that search results cannot be reliably sorted by posting date. This makes manual browsing inefficient when looking for newly published listings.
+Since the target job portal does not provide reliable sorting by posting date, JobTracker focuses on programmatic collection and post-processing the most relevant and recent listings efficiently.
 
 ## Features
 
-- Scrapes all pages of a search result
-- Extracts:
-  - Posting date, job id, url
-  - Company name, job title, location, work mode (hybrid)
-- Supports multiple configurable search profiles
-- Headless mode support (enabled by default)
-- Automatic Chrome process lifecycle handling
-- Daily merge functionality to combine multiple output files into a single dataset
-- Command-line interface
+- Multi-page scraping with full pagination support
+- Multi-profile search execution (e.g. multiple keywords or job categories)
+- Structured data extraction:
+  - Job ID, URL
+  - Posting date
+  - Company name
+  - Job title
+  - Location
+  - Work mode (e.g. hybrid/remote)
+- Configurable filtering:
+  - Date-based filtering (e.g. last N days)
+  - Location-based filtering
+- Automatic deduplication of job listings
+- Aggregation and merge of daily outputs into a unified dataset
+- CLI-based execution flow
+- Headless browser support (Playwright + Chrome lifecycle management)
+- Performance tracking (execution time, jobs per second)
+- Randomized delays to reduce request patterns and improve stability
+
+## Output
+
+- Tab-separated CSV exports per run
+- Daily merged dataset generation
+- Optional structured enrichment of job descriptions (JD aggregation)
 
 ## Installation
 
@@ -77,37 +92,76 @@ You can create new profiles by:
 
 Also, update the `OUTPUT_PATH` variable to specify where CSV files should be saved.
 
+### Filtering
+`[] or None = no filter`
+```bash
+LOCATION_FILTERS = ["Budapest", "Budaörs"]
+```
+
+`None = no filter`
+```bash
+DATE_LOOKBACK_DAYS = 7
+```
+
 ## Usage
 
 Run the scraper with a profile name defined in `config.py`:
 
 ```bash
 python jobtracker.py <profile_name>
-```
 
-Examples:
-
-```bash
+# Examples:
 python jobtracker.py python
-python jobtracker.py crm
-...
-python merge.py
+
+# or multiple profile names
+python jobtracker.py python crm
+
+# or all profile names
+python jobtracker.py all
+
+# optional job description download
+python jobad.py <csv_path>
 ```
 
-The script will:
-1. Launch the browser and navigate to the saved search URL
-2. Scrape all pages of results
-3. Parse job posting dates (including Hungarian date formats)
-4. Sort jobs by posting date (newest first)
-5. Export results to a CSV file with a timestamp
+The script performs the following:
+
+1. Launches a Playwright-controlled browser and navigates to configured search profiles
+2. Iterates through all result pages and collects job listings
+3. Extracts structured job data including:
+   - Job ID and URL
+   - Posting date (including Hungarian date formats)
+   - Company name, job title, location, and work mode
+4. Applies configurable filtering:
+   - Date-based filtering (e.g. last N days)
+   - Location-based filtering
+5. Deduplicates job entries across pages and profiles
+6. Aggregates and sorts results by posting date (newest first)
+7. Exports results into tab-separated CSV files
+8. Optionally merges daily outputs into a single consolidated dataset
 
 Sample output:
-```
+```bash
 Total jobs found: 55
 Loading page 1...
 Loading page 2...
 Loading page 3...
 Total scraped: 55
+```
+
+```bash
+Searching in: output for 2026-06-14, found 15 files.
+Jobs: 246
+Unique jobs: 106
+Merged file created: output\merged_2026-06-14.csv
+
+Timing report:
+Total time: 38.65s
+Avg step time: 12.88s
+Total jobs: 42
+Jobs per second: 0.92
++ test: 12.64s
++ vba: 21.71s
++ merge: 4.29s
 ```
 
 ## CSV Output
@@ -125,15 +179,26 @@ Total scraped: 55
 - Changes in layout may require selector updates
 - Date parsing relies on localized text formats
 
-## Changelog
 
- 
+## Changelog
 
 Details: [CHANGELOG.md](https://github.com/bceenaeiklmr/JobTracker/edit/main/CHANGELOG.md)
 
-Latest update:
+Latest updates:
 
-###  2026.06.08 – v0.0.2
+## [0.0.3] - 2026-06-14
+
+- Output folder is created in the project root directory
+- Added support for scraping all profile URLs using the `all` parameter
+- Implemented multi-profile handling (e.g. `"python analytics"`)
+- Added date and location filtering (configurable via `config.py`)
+- Job descriptions can be scraped individually and stored as a single string (~2000 characters), see jobad.py
+- Added execution time tracking per step, including jobs-per-second and total runtime metrics
+- Automatic merge process integrated into `jobtracker.py`
+- Introduced random delays between requests to reduce request intensity
+- Browser instance is reused across multiple profiles
+
+###  2026.06.08 - v0.0.2
 
 - added headless mode support (default: enabled)
 - added automatic Chrome process lifecycle handling
